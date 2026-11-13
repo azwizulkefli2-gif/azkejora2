@@ -48,7 +48,7 @@ if (isset($_GET['logout'])) {
     <div class="badge">Signed in via: <?= strtoupper(htmlspecialchars($user['source'])) ?></div>
     
     <br>
-    <a href="test-home.php?logout=true" class="logout-btn">Sign Out</a>
+    <a href="home.php?logout=true" class="logout-btn">Sign Out</a>
 </div>
 
 </body>
