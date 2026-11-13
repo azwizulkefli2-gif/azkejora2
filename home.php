@@ -306,6 +306,7 @@ $categoryColors = [
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{
+    color-scheme: dark;
   --bg:#05081a;--bg-2:#0a0f2e;--bg-3:#0f1740;--bg-4:#141e4a;
   --surface:rgba(255,255,255,0.04);--surface-2:rgba(255,255,255,0.06);--surface-3:rgba(255,255,255,0.08);--surface-4:rgba(255,255,255,0.12);
   --border:rgba(255,255,255,0.08);--border-2:rgba(255,255,255,0.14);--border-3:rgba(255,255,255,0.2);
