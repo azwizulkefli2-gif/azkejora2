@@ -57,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Google OAuth Login URL configuration
-$googleClientId = getenv('GOOGLE_CLIENT_ID');
+$googleClientId = getenv('879355190369-hi2086n76ivjn67uic0bfjfgv1baj8ca.apps.googleusercontent.com');
 $redirectUri = 'https://azkejora2.onrender.com/auth-callback.php';
 $googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=" . urlencode($googleClientId) . "&redirect_uri=" . urlencode($redirectUri) . "&response_type=code&scope=email%20profile";
 ?>
