@@ -1,6 +1,9 @@
 <?php
 session_start();
+// Include centralized database connection
+require_once 'inc_db.php';
 
+$message = "";
 $clientId     = getenv('GOOGLE_CLIENT_ID') ?: '879355190369-hi2086n76ivjn67uic0bfjfgv1baj8ca.apps.googleusercontent.com';
 $clientSecret = getenv('GOOGLE_CLIENT_SECRET') ?: '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';
 //$clientSecret = getenv('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');
@@ -46,13 +49,6 @@ if (!isset($userInfo['email'])) {
 $email = $userInfo['email'];
 $name  = $userInfo['name'] ?? '';
 $photo = $userInfo['picture'] ?? '';
-
-// 3. Connect to Database
-$host = getenv('DB_HOST') ?: 'dpg-dbr5q0t6e07s73ak86pg-a';
-$db   = getenv('DB_NAME') ?: 'azkejora2';
-$user = getenv('DB_USER') ?: 'azkejora2_user';
-$pass = getenv('DB_PASS') ?: 'iaWV8wGhAnXWEY1JycGWvVDrOeRjfRAt';
-$port = getenv('DB_PORT') ?: '5432';
 
 $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$db", $user, $pass, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
