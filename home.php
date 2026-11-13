@@ -16,14 +16,15 @@ if (isset($_GET['logout'])) {
 
 require_once 'inc_db.php';
 
-$user = $_SESSION['user'];
-$userId = $user['userid'] ?? $user['id'] ?? '';
-$userName = $user['name'] ?? 'User';
-$userEmail = $user['userid'] ?? '';
-$userPhone = $user['phone'] ?? '';
-$userAddress = $user['address'] ?? '';
-$userPhoto = $user['photo'] ?? '';
-$userSource = $user['source'] ?? 'email';
+// ✅ FIX: Renamed to $currentUser to prevent overwriting the DB $user variable from inc_db.php
+$currentUser = $_SESSION['user'];
+$userId = $currentUser['userid'] ?? $currentUser['id'] ?? '';
+$userName = $currentUser['name'] ?? 'User';
+$userEmail = $currentUser['userid'] ?? '';
+$userPhone = $currentUser['phone'] ?? '';
+$userAddress = $currentUser['address'] ?? '';
+$userPhoto = $currentUser['photo'] ?? '';
+$userSource = $currentUser['source'] ?? 'email';
 
 $message = '';
 $messageType = '';
@@ -37,7 +38,8 @@ if (isset($_GET['lang']) && in_array($_GET['lang'], ['ms','en'])) {
 
 // ---------- DB HELPERS ----------
 try {
-    $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$db", $user_db ?? $user, $pass, [
+    // ✅ Now $user correctly refers to the database username string from inc_db.php
+    $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$db", $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
