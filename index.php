@@ -963,7 +963,7 @@ ms:{
 "nav.features":"Ciri-ciri","nav.how":"Cara Berfungsi","nav.pricing":"Harga","nav.faq":"FAQ","nav.admin":"Log Masuk Admin","nav.signin":"Log Masuk","nav.trial":"Mula Percubaan Percuma","lang.label":"Bahasa",
 "hero.eyebrow":"Dipercayai oleh 500+ Perniagaan",
 "hero.title":"Permudahkan perniagaan anda dengan <span class=\"grad-text\">satu platform berkuasa.</span>",
-"hero.lead":"Berhenti tenggelam dalam hamparan, tarikh akhir yang terlepas dan data yang berselerak. AZ Kejora menyatukan semuanya — papan pemuka, laporan, amaran dan cerapan — dalam satu ruang kerja elegan yang direka untuk pasukan moden.",
+"hero.lead":"Selesaikan semua kesulitan, terlepas dateline, susah nak analisa data-data. AZ Kejora menyatukan semuanya — papan pemuka, laporan, amaran dan cerapan — dalam satu ruang kerja elegan yang direka untuk pasukan moden.",
 "hero.cta1":"Mula Percubaan Percuma 30 Hari →","hero.cta2":"Terokai Ciri-ciri",
 "hero.check1":"Tiada kad kredit diperlukan","hero.check2":"Batal bila-bila masa","hero.check3":"Persediaan dalam 2 minit",
 "mock.kpi1":"Pengguna Aktif","mock.kpi2":"Pertumbuhan","mock.kpi3":"Pendapatan",
