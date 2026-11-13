@@ -1,10 +1,10 @@
 <?php
 // We pull database details from environment variables (securely used on Render)
-$host = getenv('DB_HOST') ?: 'localhost';
-$db   = getenv('DB_NAME') ?: 'my_database';
-$user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASS') ?: '';
-$port = getenv('DB_PORT') ?: '3306';
+$host = getenv('DB_HOST') ?: 'dpg-dbr5q0t6e07s73ak86pg-a';
+$db   = getenv('DB_NAME') ?: 'azkejora2';
+$user = getenv('DB_USER') ?: 'azkejora2_user';
+$pass = getenv('DB_PASS') ?: 'iaWV8wGhAnXWEY1JycGWvVDrOeRjfRAt';
+$port = getenv('DB_PORT') ?: '5432';
 
 $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
 
