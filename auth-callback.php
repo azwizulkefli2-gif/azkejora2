@@ -10,7 +10,7 @@ $clientSecret = getenv('GOOGLE_CLIENT_SECRET') ?: 'GOCSPX-7nExtggeBkXeDOMh7_s75Z
 $redirectUri  = 'https://azkejora2.onrender.com/auth-callback.php';
 
 if (!isset($_GET['code'])) {
-    header("Location: test-login.php");
+    header("Location: index.php");
     exit;
 }
 
@@ -77,6 +77,6 @@ if (!$userData) {
 
 // 5. Start user session and redirect to home page
 $_SESSION['user'] = $userData;
-header("Location: test-home.php");
+header("Location: home.php");
 exit;
 ?>
