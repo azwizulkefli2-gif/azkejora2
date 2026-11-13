@@ -1,3 +1,83 @@
+<?php
+session_start();
+
+// Redirect if already logged in
+if (isset($_SESSION['user'])) {
+    header("Location: home.php");
+    exit;
+}
+
+// Include centralized database connection
+require_once 'inc_db.php';
+
+$message = "";
+$messageType = "error";
+$openModal = "";
+
+try {
+    $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$db", $user, $pass, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    ]);
+} catch (\PDOException $e) {
+    $message = "Database Connection Failed. Please try again later.";
+    $messageType = "error";
+    $pdo = null;
+}
+
+// Handle Email Form Submission (Sign Up or Sign In)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
+    $action = $_POST['action'] ?? '';
+    $email  = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $name   = trim($_POST['name'] ?? '');
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $message = "Please enter a valid email address.";
+        $messageType = "error";
+        $openModal = ($action === 'signup') ? 'signup' : 'signin';
+    } else {
+        if ($action === 'signup') {
+            $openModal = 'signup';
+            if (empty($name)) {
+                $message = "Please enter your full name.";
+                $messageType = "error";
+            } else {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                try {
+                    $stmt = $pdo->prepare("INSERT INTO \"User\" (userid, name, source, password_hash) VALUES (?, ?, 'email', ?)");
+                    $stmt->execute([$email, $name, $hash]);
+                    $message = "Account created successfully! You can now sign in.";
+                    $messageType = "success";
+                    $openModal = 'signin'; // Switch to signin modal after success
+                } catch (\PDOException $e) {
+                    $message = "Error: Email is already registered.";
+                    $messageType = "error";
+                }
+            }
+        } elseif ($action === 'signin') {
+            $openModal = 'signin';
+            $stmt = $pdo->prepare("SELECT * FROM \"User\" WHERE userid = ? AND source = 'email'");
+            $stmt->execute([$email]);
+            $userData = $stmt->fetch();
+
+            if ($userData && password_verify($password, $userData['password_hash'])) {
+                $_SESSION['user'] = $userData;
+                header("Location: home.php");
+                exit;
+            } else {
+                $message = "Invalid email or password.";
+                $messageType = "error";
+            }
+        }
+    }
+}
+
+// Google OAuth Login URL configuration
+$googleClientId = getenv('GOOGLE_CLIENT_ID') ?: '879355190369-hi2086n76ivjn67uic0bfjfgv1baj8ca.apps.googleusercontent.com';
+$redirectUri = 'https://azkejora2.onrender.com/auth-callback.php';
+$googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=" . urlencode($googleClientId) . "&redirect_uri=" . urlencode($redirectUri) . "&response_type=code&scope=email%20profile";
+?>
 <!DOCTYPE html>
 <html lang="ms">
 <head>
@@ -384,6 +464,11 @@ footer{border-top:1px solid var(--border);padding:40px 0;position:relative;z-ind
 .modal-close:hover{background:var(--surface-3);color:var(--text)}
 .admin-secure{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:11px;color:var(--faint);font-weight:600}
 .admin-secure svg{width:13px;height:13px;color:var(--emerald)}
+
+/* Auth Messages */
+.auth-msg{margin:16px 0 0;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;line-height:1.5}
+.auth-msg.error{background:rgba(244,63,94,0.15);color:var(--rose);border:1px solid rgba(244,63,94,0.3)}
+.auth-msg.success{background:rgba(16,185,129,0.15);color:var(--emerald);border:1px solid rgba(16,185,129,0.3)}
 
 /* Mobile drawer */
 .mobile-drawer-overlay{position:fixed;inset:0;background:rgba(5,8,26,0.7);backdrop-filter:blur(4px);z-index:65;display:none}
@@ -868,21 +953,26 @@ footer{border-top:1px solid var(--border);padding:40px 0;position:relative;z-ind
   <h3 data-i18n="signin.title">Selamat kembali</h3>
   <p class="sub" data-i18n="signin.sub">Log masuk ke akaun AZ Kejora anda</p>
 
-  <a href="#" class="google-btn" style="margin-top:20px" onclick="event.preventDefault();alert('Google sign-in integration placeholder')">
-    <svg width="18" height="18" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
-      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
-      <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
-      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
-    </svg>
-    <span data-i18n="auth.google">Teruskan dengan Google</span>
-  </a>
+  <?php if(!empty($message) && $openModal === 'signin'): ?>
+  <div class="auth-msg <?= $messageType === 'success' ? 'success' : 'error' ?>"><?= htmlspecialchars($message) ?></div>
+  <?php endif; ?>
 
-  <div class="divider"><span></span><span data-i18n="auth.or" style="flex:0">ATAU</span><span></span></div>
+  <form method="POST" action="">
+    <input type="hidden" name="action" value="signin">
+    <a href="<?= htmlspecialchars($googleAuthUrl) ?>" class="google-btn" style="margin-top:20px">
+      <svg width="18" height="18" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+        <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
+      </svg>
+      <span data-i18n="auth.google">Teruskan dengan Google</span>
+    </a>
 
-  <form onsubmit="event.preventDefault();alert('Sign-in integration placeholder')">
-    <div class="field"><label data-i18n="auth.email">Alamat e-mel</label><input type="email" data-i18n-ph="auth.ph.email" placeholder="anda@contoh.com" required></div>
-    <div class="field"><label data-i18n="auth.password">Kata laluan</label><input type="password" data-i18n-ph="auth.ph.password" placeholder="Masukkan kata laluan anda" required></div>
+    <div class="divider"><span></span><span data-i18n="auth.or" style="flex:0">ATAU</span><span></span></div>
+
+    <div class="field"><label data-i18n="auth.email">Alamat e-mel</label><input type="email" name="email" data-i18n-ph="auth.ph.email" placeholder="anda@contoh.com" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"></div>
+    <div class="field"><label data-i18n="auth.password">Kata laluan</label><input type="password" name="password" data-i18n-ph="auth.ph.password" placeholder="Masukkan kata laluan anda" required></div>
     <button type="submit" class="btn primary full" style="margin-top:20px" data-i18n="signin.btn">Log masuk dengan selamat</button>
   </form>
 
@@ -898,22 +988,27 @@ footer{border-top:1px solid var(--border);padding:40px 0;position:relative;z-ind
   <h3 data-i18n="signup.title">Mulakan percubaan percuma anda</h3>
   <p class="sub" data-i18n="signup.sub">30 hari akses penuh · Tiada kad kredit diperlukan</p>
 
-  <a href="#" class="google-btn" style="margin-top:20px" onclick="event.preventDefault();alert('Google sign-up integration placeholder')">
-    <svg width="18" height="18" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
-      <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
-      <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
-      <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
-    </svg>
-    <span data-i18n="signup.google">Daftar dengan Google</span>
-  </a>
+  <?php if(!empty($message) && $openModal === 'signup'): ?>
+  <div class="auth-msg <?= $messageType === 'success' ? 'success' : 'error' ?>"><?= htmlspecialchars($message) ?></div>
+  <?php endif; ?>
 
-  <div class="divider"><span></span><span data-i18n="auth.or" style="flex:0">ATAU</span><span></span></div>
+  <form method="POST" action="">
+    <input type="hidden" name="action" value="signup">
+    <a href="<?= htmlspecialchars($googleAuthUrl) ?>" class="google-btn" style="margin-top:20px">
+      <svg width="18" height="18" viewBox="0 0 24 24">
+        <path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/>
+        <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/>
+        <path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/>
+        <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"/>
+      </svg>
+      <span data-i18n="signup.google">Daftar dengan Google</span>
+    </a>
 
-  <form onsubmit="event.preventDefault();alert('Sign-up integration placeholder')">
-    <div class="field"><label data-i18n="signup.name">Nama penuh</label><input type="text" data-i18n-ph="auth.ph.name" placeholder="Nama anda" required></div>
-    <div class="field"><label data-i18n="auth.email">Alamat e-mel</label><input type="email" data-i18n-ph="auth.ph.email2" placeholder="anda@contoh.com" required></div>
-    <div class="field"><label data-i18n="auth.password">Kata laluan</label><input type="password" data-i18n-ph="auth.ph.password2" placeholder="Sekurang-kurangnya 6 aksara" minlength="6" required></div>
+    <div class="divider"><span></span><span data-i18n="auth.or" style="flex:0">ATAU</span><span></span></div>
+
+    <div class="field"><label data-i18n="signup.name">Nama penuh</label><input type="text" name="name" data-i18n-ph="auth.ph.name" placeholder="Nama anda" required value="<?= htmlspecialchars($_POST['name'] ?? '') ?>"></div>
+    <div class="field"><label data-i18n="auth.email">Alamat e-mel</label><input type="email" name="email" data-i18n-ph="auth.ph.email2" placeholder="anda@contoh.com" required value="<?= htmlspecialchars($_POST['email'] ?? '') ?>"></div>
+    <div class="field"><label data-i18n="auth.password">Kata laluan</label><input type="password" name="password" data-i18n-ph="auth.ph.password2" placeholder="Sekurang-kurangnya 6 aksara" minlength="6" required></div>
     <button type="submit" class="btn primary full" style="margin-top:20px" data-i18n="signup.btn">Mulakan Percubaan Percuma 30 Hari →</button>
   </form>
 
@@ -963,7 +1058,7 @@ ms:{
 "nav.features":"Ciri-ciri","nav.how":"Cara Berfungsi","nav.pricing":"Harga","nav.faq":"FAQ","nav.admin":"Log Masuk Admin","nav.signin":"Log Masuk","nav.trial":"Mula Percubaan Percuma","lang.label":"Bahasa",
 "hero.eyebrow":"Dipercayai oleh 500+ Perniagaan",
 "hero.title":"Permudahkan perniagaan anda dengan <span class=\"grad-text\">satu platform berkuasa.</span>",
-"hero.lead":"Selesaikan semua kesulitan, terlepas dateline, susah nak analisa data-data. AZ Kejora menyatukan semuanya — papan pemuka, laporan, amaran dan cerapan — dalam satu ruang kerja elegan yang direka untuk pasukan moden.",
+"hero.lead":"Berhenti tenggelam dalam hamparan, tarikh akhir yang terlepas dan data yang berselerak. AZ Kejora menyatukan semuanya — papan pemuka, laporan, amaran dan cerapan — dalam satu ruang kerja elegan yang direka untuk pasukan moden.",
 "hero.cta1":"Mula Percubaan Percuma 30 Hari →","hero.cta2":"Terokai Ciri-ciri",
 "hero.check1":"Tiada kad kredit diperlukan","hero.check2":"Batal bila-bila masa","hero.check3":"Persediaan dalam 2 minit",
 "mock.kpi1":"Pengguna Aktif","mock.kpi2":"Pertumbuhan","mock.kpi3":"Pendapatan",
@@ -1110,9 +1205,7 @@ function applyLang(lang){
     const key = el.getAttribute('data-i18n-ph');
     if(dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
   });
-  // Update lang button label
   document.getElementById('langLabel').textContent = lang === 'ms' ? 'BM' : 'EN';
-  // Update active states
   document.querySelectorAll('.lang-opt').forEach(b=>b.classList.toggle('active', b.dataset.lang === lang));
   document.querySelectorAll('.drawer-lang-opt').forEach(b=>b.classList.toggle('active', b.dataset.lang === lang));
 }
@@ -1122,7 +1215,6 @@ function setLang(lang){
   closeLangMenu();
 }
 
-/* Lang menu toggle */
 function toggleLangMenu(e){
   e.stopPropagation();
   document.getElementById('langMenu').classList.toggle('open');
@@ -1144,7 +1236,6 @@ function closeSignup(){document.getElementById('signupModal').classList.remove('
 function openAdmin(){document.getElementById('adminModal').classList.add('open');document.body.style.overflow='hidden';}
 function closeAdmin(){document.getElementById('adminModal').classList.remove('open');document.body.style.overflow='';}
 
-/* Mobile drawer */
 function openDrawer(){
   document.getElementById('mobileDrawer').classList.add('open');
   document.getElementById('drawerOverlay').classList.add('open');
@@ -1159,12 +1250,10 @@ document.querySelectorAll('.drawer-nav a').forEach(a=>{
   a.addEventListener('click',()=>setTimeout(closeDrawer,50));
 });
 
-/* Escape key closes everything */
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){closeAuth();closeSignup();closeAdmin();closeDrawer();closeLangMenu();}
 });
 
-/* Scroll reveal */
 const observer=new IntersectionObserver((entries)=>{
   entries.forEach(entry=>{
     if(entry.isIntersecting){entry.target.classList.add('visible');observer.unobserve(entry.target);}
@@ -1172,7 +1261,6 @@ const observer=new IntersectionObserver((entries)=>{
 },{threshold:0.1,rootMargin:'0px 0px -50px 0px'});
 document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
 
-/* Parallax orbs on mouse move */
 document.addEventListener('mousemove',(e)=>{
   const x=(e.clientX/window.innerWidth-0.5)*20;
   const y=(e.clientY/window.innerHeight-0.5)*20;
@@ -1181,8 +1269,17 @@ document.addEventListener('mousemove',(e)=>{
   document.querySelector('.bg-orb.o3').style.transform=`translate(${x*0.5}px,${-y*0.5}px)`;
 });
 
-/* Init: default Bahasa Melayu */
 applyLang(currentLang);
+
+<?php if (!empty($openModal)): ?>
+document.addEventListener('DOMContentLoaded', function() {
+  <?php if ($openModal === 'signin'): ?>
+    openAuth();
+  <?php elseif ($openModal === 'signup'): ?>
+    openSignup();
+  <?php endif; ?>
+});
+<?php endif; ?>
 </script>
 </body>
 </html>
