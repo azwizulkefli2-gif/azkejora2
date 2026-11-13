@@ -553,11 +553,40 @@ img{max-width:100%;display:block}
 .field{display:flex;flex-direction:column;gap:6px}
 .field.full{grid-column:1 / -1}
 .field label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
 .field input,.field select,.field textarea{
   width:100%;background:var(--surface-2);
   border:1px solid var(--border-2);border-radius:11px;
   padding:11px 14px;font-size:14px;color:var(--text);outline:none;transition:.2s;
+  color-scheme:dark; /* makes native popups (dropdown, date picker) render dark */
 }
+
+/* Dark theme for the dropdown list itself */
+.field select option,
+.field select optgroup{
+  background:#0f1740;      /* dark navy panel */
+  color:#e6ecff;           /* readable light text */
+  font-weight:600;
+  padding:8px 12px;
+}
+
+/* Group headers (Expenses / Income) */
+.field select optgroup{
+  background:#0a0f2e;
+  color:#60a5fa;
+  font-style:normal;
+  font-size:12px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+
+/* Highlight the selected / hovered item */
+.field select option:checked,
+.field select option:hover{
+  background:linear-gradient(135deg,#3b82f6,#8b5cf6);
+  color:#fff;
+}
+    
 .field input:focus,.field select:focus,.field textarea:focus{
   border-color:var(--brand);box-shadow:0 0 0 3px rgba(59,130,246,0.15);background:var(--surface-3);
 }
