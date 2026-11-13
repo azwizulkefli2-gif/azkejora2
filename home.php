@@ -15,6 +15,7 @@ if (isset($_GET['logout'])) {
 }
 
 require_once 'inc_db.php';
+require_once 'inc_feeds.php';
 
 // ✅ FIX: Renamed to $currentUser to prevent overwriting the DB $user variable from inc_db.php
 $currentUser = $_SESSION['user'];
