@@ -1,12 +1,10 @@
 <?php
 session_start();
 
-// Connect to PostgreSQL database using Render environment variables
-$host = getenv('DB_HOST') ?: 'dpg-dbr5q0t6e07s73ak86pg-a';
-$db   = getenv('DB_NAME') ?: 'azkejora2';
-$user = getenv('DB_USER') ?: 'azkejora2_user';
-$pass = getenv('DB_PASS') ?: 'iaWV8wGhAnXWEY1JycGWvVDrOeRjfRAt';
-$port = getenv('DB_PORT') ?: '5432';
+// Include centralized database connection
+require_once 'inc_db.php';
+
+$message = "";
 
 try {
     $pdo = new PDO("pgsql:host=$host;port=$port;dbname=$db", $user, $pass, [
