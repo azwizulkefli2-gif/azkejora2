@@ -241,31 +241,25 @@ $page = $_GET['page'] ?? 'home';
 $validPages = ['home','profile','budget','news','entertainment','sports','games','subscription','download'];
 if (!in_array($page, $validPages)) $page = 'home';
 
-// Feed mock data
-$feeds = [
-    'news' => [
-        ['title' => 'AI Revolution Reshapes Asian Tech Startups', 'tldr_en' => 'Generative AI adoption surges across SEA startups, with Malaysia seeing 40% YoY growth in AI-first products.', 'tldr_ms' => 'Penggunaan AI generatif melonjak dalam startup SEA, dengan Malaysia mencatat pertumbuhan 40% YoY.', 'time' => '2h ago', 'tag' => 'Tech'],
-        ['title' => 'Digital Ringgit Pilot Launches Q2 2026', 'tldr_en' => 'Bank Negara begins CBDC trials with major Malaysian banks. Could change how you transact daily.', 'tldr_ms' => 'Bank Negara mulakan ujian CBDC dengan bank-bank utama. Boleh ubah cara anda berurus niaga.', 'time' => '5h ago', 'tag' => 'Finance'],
-        ['title' => 'Youth Climate Summit in KL Draws 10k', 'tldr_en' => 'Young activists push for faster renewable energy transition across ASEAN.', 'tldr_ms' => 'Aktivis muda desak peralihan tenaga boleh diperbaharui lebih pantas di ASEAN.', 'time' => '8h ago', 'tag' => 'World'],
-        ['title' => 'Malaysia\'s Digital Nomad Visa Gets Upgrade', 'tldr_en' => 'New perks include tax breaks and co-working partnerships for remote workers.', 'tldr_ms' => 'Faedah baharu termasuk potongan cukai untuk pekerja jarak jauh.', 'time' => '1d ago', 'tag' => 'Lifestyle'],
-    ],
-    'entertainment' => [
-        ['title' => 'Top 10 Netflix Picks This Week', 'tldr_en' => 'A mix of K-drama thrillers and local Malaysian productions trending globally.', 'tldr_ms' => 'Gabungan thriller K-drama dan produksi Malaysia trending global.', 'time' => '1h ago', 'tag' => 'Streaming'],
-        ['title' => 'New Taylor Swift Album Breaks Records', 'tldr_en' => 'First-day streams surpass 300M worldwide. Fans call it her most personal work yet.', 'tldr_ms' => 'Strim hari pertama lepasi 300M seluruh dunia.', 'time' => '3h ago', 'tag' => 'Music'],
-        ['title' => 'Marvel Phase 7 Roadmap Revealed', 'tldr_en' => 'New heroes and multiverse twists planned through 2029.', 'tldr_ms' => 'Wira baharu dan plot multiverse dirancang hingga 2029.', 'time' => '6h ago', 'tag' => 'Movies'],
-    ],
-    'sports' => [
-        ['title' => 'Harimau Malaya Win AFF Cup Qualifier 3-1', 'tldr_en' => 'Dominant second-half performance secures spot in final tournament.', 'tldr_ms' => 'Persembahan separuh masa kedua yang dominan mengesahkan tempat dalam kejohanan akhir.', 'time' => '4h ago', 'tag' => 'Football'],
-        ['title' => 'Lee Zii Jia Advances to World Tour Finals', 'tldr_en' => 'Malaysian shuttler beats top seed in straight games.', 'tldr_ms' => 'Pemain badminton Malaysia tewaskan pilihan utama.', 'time' => '7h ago', 'tag' => 'Badminton'],
-        ['title' => 'F1 2026: New Hybrid Engine Rules Confirmed', 'tldr_en' => 'Sustainable fuel and increased electric power set to reshape the grid.', 'tldr_ms' => 'Bahan api lestari dan kuasa elektrik meningkat akan ubah grid F1.', 'time' => '1d ago', 'tag' => 'Motorsport'],
-    ],
-    'games' => [
-        ['title' => 'GTA VI Official Release Date Confirmed', 'tldr_en' => 'Rockstar announces fall 2026 launch with Vice City reboot. Pre-orders break records.', 'tldr_ms' => 'Rockstar umum pelancaran musim luruh 2026 dengan reboot Vice City.', 'time' => '2h ago', 'tag' => 'Gaming'],
-        ['title' => 'Mobile Legends M6 World Championship', 'tldr_en' => 'Malaysian team makes top 4 in Jakarta finals.', 'tldr_ms' => 'Pasukan Malaysia masuk 4 teratas dalam final Jakarta.', 'time' => '5h ago', 'tag' => 'Esports'],
-        ['title' => 'Steam Winter Sale: Top 50 Deals', 'tldr_en' => 'Best indie and AAA discounts of the year curated for students.', 'tldr_ms' => 'Diskaun indie dan AAA terbaik tahun ini untuk pelajar.', 'time' => '12h ago', 'tag' => 'Deals'],
-    ],
-];
+// ---------- LIVE FEEDS (replaces hardcoded mock data) ----------
+$savedFeedIds = [];
+if ($pdo) {
+    // Auto-refresh only the category being viewed (keeps page fast)
+    $feedTypes = in_array($page, ['news','entertainment','sports','games']) ? [$page]
+               : ($page === 'home' ? ['news','entertainment','sports','games'] : []);
+    foreach ($feedTypes as $ft) {
+        try { feed_refresh($pdo, $ft); } catch (Throwable $e) {}
+    }
+    $savedFeedIds = feed_saved_ids($pdo, $userId);
+}
 
+// Normalised live rows, keyed by type
+$liveFeeds = [];
+foreach (['news','entertainment','sports','games'] as $ft) {
+    $liveFeeds[$ft] = $pdo ? feed_get($pdo, $ft, 24, $lang) : [];
+}
+$liveMixed = $pdo ? feed_get_mixed($pdo, 2, $lang) : [];
+$feedUpdated = $pdo ? feed_last_updated($pdo, in_array($page,['news','entertainment','sports','games']) ? $page : 'news') : null;
 $greeting = function() use ($lang) {
     $h = (int)date('G');
     if ($h < 12) return $lang === 'ms' ? 'Selamat Pagi' : 'Good Morning';
@@ -674,6 +668,10 @@ img{max-width:100%;display:block}
   .stat b{font-size:22px}
   .feed-grid{grid-template-columns:1fr}
 }
+
+a.feed-card{cursor:pointer;color:inherit}
+.save-btn.saved{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:var(--emerald)}
+
 </style>
 </head>
 <body>
@@ -881,22 +879,28 @@ img{max-width:100%;display:block}
           <span class="badge"><?= $lang === 'ms' ? 'Dicadangkan AI' : 'AI-Picked' ?></span>
         </div>
         <div class="feed-grid">
-          <?php
-          $mixed = [];
-          foreach ($feeds as $type => $items) { foreach ($items as $it) { $it['type'] = $type; $mixed[] = $it; } }
-          shuffle($mixed);
-          foreach (array_slice($mixed, 0, 4) as $item):
-          ?>
-          <div class="feed-card">
-            <span class="tag"><?= htmlspecialchars($item['tag']) ?></span>
-            <h4><?= htmlspecialchars($item['title']) ?></h4>
-            <div class="tldr"><?= htmlspecialchars($lang === 'ms' ? $item['tldr_ms'] : $item['tldr_en']) ?></div>
-            <div class="meta">
-              <span><?= htmlspecialchars($item['time']) ?></span>
-              <button class="save-btn">🔖 <?= $lang === 'ms' ? 'Simpan' : 'Save' ?></button>
-            </div>
-          </div>
-          <?php endforeach; ?>
+        
+<?php if (empty($liveMixed)): ?>
+  <div class="empty"><span class="emoji">📡</span>
+    <?= $lang==='ms' ? 'Suapan belum dimuatkan. Klik "Muat Semula" di bawah.' : 'Feeds not loaded yet. Tap "Refresh" below.' ?>
+  </div>
+<?php else: foreach ($liveMixed as $item): ?>
+  <a class="feed-card" href="feed_detail.php?id=<?= (int)$item['id'] ?>">
+    <?php if (!empty($item['image_url'])): ?>
+      <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="" loading="lazy"
+           style="width:100%;height:130px;object-fit:cover;border-radius:10px"
+           onerror="this.remove()">
+    <?php endif; ?>
+    <span class="tag"><?= htmlspecialchars($item['tag']) ?></span>
+    <h4><?= htmlspecialchars($item['title']) ?></h4>
+    <div class="tldr"><?= htmlspecialchars($item['summary']) ?></div>
+    <div class="meta">
+      <span><?= htmlspecialchars($item['source_name']) ?> · <?= $item['time_ago'] ?></span>
+      <span class="save-btn"><?= $lang==='ms' ? 'Baca →' : 'Read →' ?></span>
+    </div>
+  </a>
+<?php endforeach; endif; ?>
+
         </div>
       </div>
 
@@ -1202,17 +1206,45 @@ img{max-width:100%;display:block}
     </div>
 
     <div class="feed-grid">
-      <?php foreach ($feeds[$page] as $item): ?>
-      <div class="feed-card">
-        <span class="tag"><?= htmlspecialchars($item['tag']) ?></span>
-        <h4><?= htmlspecialchars($item['title']) ?></h4>
-        <div class="tldr"><strong><?= $lang === 'ms' ? 'Mengapa penting:' : 'Why it matters:' ?></strong> <?= htmlspecialchars($lang === 'ms' ? $item['tldr_ms'] : $item['tldr_en']) ?></div>
-        <div class="meta">
-          <span>🕐 <?= htmlspecialchars($item['time']) ?></span>
-          <button class="save-btn">🔖 <?= $lang === 'ms' ? 'Simpan' : 'Save' ?></button>
-        </div>
-      </div>
-      <?php endforeach; ?>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+  <small style="color:var(--faint);font-size:12px">
+    📡 <?= $lang==='ms'?'Sumber langsung':'Live sources' ?> ·
+    <?= $lang==='ms'?'Kemas kini':'Updated' ?> <?= feed_time_ago($feedUpdated, $lang) ?>
+  </small>
+  <button class="btn ghost" onclick="refreshFeed('<?= $page ?>')" id="rfBtn">
+    🔄 <?= $lang==='ms'?'Muat Semula':'Refresh' ?>
+  </button>
+</div>
+
+<div class="feed-grid" id="feedGrid">
+
+	<?php if (empty($liveFeeds[$page])): ?>
+	  <div class="empty"><span class="emoji">📡</span>
+	    <?= $lang==='ms' ? 'Tiada item buat masa ini. Cuba Muat Semula.' : 'No items right now. Try Refresh.' ?>
+	  </div>
+	<?php else: foreach ($liveFeeds[$page] as $item):
+	  $sv = in_array((int)$item['id'], $savedFeedIds, true); ?>
+	  <div class="feed-card">
+	    <?php if (!empty($item['image_url'])): ?>
+	      <img src="<?= htmlspecialchars($item['image_url']) ?>" alt="" loading="lazy"
+	           style="width:100%;height:140px;object-fit:cover;border-radius:10px" onerror="this.remove()">
+	    <?php endif; ?>
+	    <span class="tag"><?= htmlspecialchars($item['tag']) ?></span>
+	    <a href="feed_detail.php?id=<?= (int)$item['id'] ?>"><h4><?= htmlspecialchars($item['title']) ?></h4></a>
+	    <div class="tldr"><?= htmlspecialchars($item['summary']) ?></div>
+	    <div class="meta">
+	      <span><?= htmlspecialchars($item['source_name']) ?> · <?= $item['time_ago'] ?></span>
+	      <button class="save-btn <?= $sv?'saved':'' ?>" onclick="toggleSave(<?= (int)$item['id'] ?>, this)">
+	        <?= $sv ? '✓' : '🔖' ?>
+	      </button>
+	    </div>
+	    <a class="btn ghost full" style="margin-top:6px" href="feed_detail.php?id=<?= (int)$item['id'] ?>">
+	      <?= $lang==='ms'?'Lihat butiran':'View details' ?> →
+	    </a>
+	  </div>
+	<?php endforeach; endif; ?>
+	</div>
+
     </div>
   <?php endif; ?>
 
@@ -1419,6 +1451,25 @@ function openQuickLog() {
 document.querySelectorAll('.sidebar a').forEach(a => {
   a.addEventListener('click', () => { if (window.innerWidth <= 860) closeSidebar(); });
 });
+
+async function refreshFeed(type){
+  const b=document.getElementById('rfBtn'); b.disabled=true; b.textContent='⏳ …';
+  try{
+    const r=await fetch('rss.php?type='+type+'&refresh=1');
+    const j=await r.json();
+    if(j.ok) location.reload();
+  }catch(e){}
+  b.disabled=false;
+}
+async function toggleSave(id, btn){
+  btn.disabled=true;
+  try{
+    const r=await fetch('feed_save.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'id='+id});
+    const j=await r.json();
+    if(j.ok){ btn.textContent=j.saved?'✓':'🔖'; btn.classList.toggle('saved', j.saved); }
+  }catch(e){}
+  btn.disabled=false;
+}
 </script>
 
 </body>
