@@ -1,8 +1,8 @@
 <?php
 session_start();
 
-$clientId     = getenv('GOOGLE_CLIENT_ID');
-$clientSecret = getenv('GOOGLE_CLIENT_SECRET');
+$clientId     = getenv('879355190369-hi2086n76ivjn67uic0bfjfgv1baj8ca.apps.googleusercontent.com');
+$clientSecret = getenv('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');
 $redirectUri  = 'https://azkejora2.onrender.com/auth-callback.php';
 
 if (!isset($_GET['code'])) {
