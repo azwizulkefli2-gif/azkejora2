@@ -6,7 +6,8 @@ $user = getenv('DB_USER') ?: 'azkejora2_user';
 $pass = getenv('DB_PASS') ?: 'iaWV8wGhAnXWEY1JycGWvVDrOeRjfRAt';
 $port = getenv('DB_PORT') ?: '5432';
 
-$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+//$dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
+$dsn = "pgsql:host=$host;port=$port;dbname=$db";
 
 try {
     // Create the Database Connector using PDO
